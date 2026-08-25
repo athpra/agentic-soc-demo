@@ -1,4 +1,8 @@
 streamlit>=1.37,<2
 openai>=1.40,<2
 pandas>=2.0,<3
-plotly>=5.20,<6
+
+# plotly is optional: pages/2_Traffic_Generator.py falls back to Streamlit's
+# native charts if it isn't installed. Uncomment for the nicer latency
+# histogram/scatter plots once your environment can install it reliably.
+# plotly>=5.20,<6

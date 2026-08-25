@@ -96,11 +96,23 @@ def get_access_token() -> str:
 
     for attempt in range(max_attempts):
         try:
-            with open(JWT_FILE) as f:
+            # utf-8-sig transparently strips a leading byte-order-mark if
+            # present (invisible in a terminal `cat`, but poison to
+            # json.loads) -- a no-op on a file with no BOM.
+            with open(JWT_FILE, encoding="utf-8-sig") as f:
                 raw = f.read()
             if not raw.strip():
                 raise ValueError("file was empty")
-            data = json.loads(raw)
+            try:
+                data = json.loads(raw)
+            except json.JSONDecodeError:
+                # Tolerate any other stray leading bytes/whitespace before
+                # the JSON object actually starts, by re-parsing from the
+                # first '{' we can find.
+                brace = raw.find("{")
+                if brace == -1:
+                    raise
+                data = json.loads(raw[brace:])
             return data["access_token"]
         except FileNotFoundError as exc:
             last_exc, last_detail = exc, "file does not exist"

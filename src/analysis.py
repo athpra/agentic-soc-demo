@@ -231,7 +231,12 @@ def _call_investigation(events: list[dict], model_cfg: ModelConfig) -> ChatResul
     ]
     # max_tokens is generous: reasoning-tuned models can spend a large chunk
     # of the budget thinking out loud before writing the report itself.
-    res = chat(model_cfg, messages, temperature=0.2, max_tokens=3500)
+    # timeout is raised well above chat()'s 60s default -- investigation
+    # calls have been observed averaging 130s+ under load on a shared
+    # endpoint (Live Stream running triage + investigation concurrently),
+    # and the default was killing legitimately-slow-but-successful calls
+    # and counting them as failures.
+    res = chat(model_cfg, messages, temperature=0.2, max_tokens=3500, timeout=240.0)
     if not res.error:
         res.text, res.reasoning = strip_reasoning_preamble(res.text)
     return res

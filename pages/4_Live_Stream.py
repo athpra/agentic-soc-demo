@@ -166,12 +166,19 @@ if run:
     steady_buckets = [b for b in per_sec if warmup <= b < duration_s]
     steady_eps = sum(per_sec[b] for b in steady_buckets) / len(steady_buckets) if steady_buckets else 0.0
 
+    if steady_eps >= target_eps:
+        hit_label = "Yes"
+    elif steady_eps >= target_eps * 0.9:
+        hit_label = f"Close ({steady_eps / target_eps:.0%} of target)"
+    else:
+        hit_label = f"Below target ({steady_eps / target_eps:.0%})"
+
     st.subheader("Run summary")
     s1, s2, s3, s4 = st.columns(4)
     s1.metric("Total events triaged", events_done)
     s2.metric("Steady-state EPS", f"{steady_eps:.1f}", delta=f"{steady_eps - target_eps:+.1f} vs target")
     s3.metric("Target EPS", target_eps)
-    s4.metric("Hit target?", "Yes" if steady_eps >= target_eps * 0.9 else "Below target")
+    s4.metric("Hit target?", hit_label)
 
     st.caption(
         f"Steady-state EPS excludes the cold-start ramp-up (first ~{warmup}s, before any request "

@@ -86,38 +86,53 @@ def get_access_token() -> str:
 
     # The platform's token-refresh sidecar can take a moment to (re)populate
     # this file right after a session/application starts, so a request that
-    # lands in that window can catch it mid-write or with placeholder
-    # content. Retry briefly rather than failing on the very first read.
+    # lands in that window can catch it mid-write, empty, or with
+    # placeholder content. Retry with backoff (~11s total) rather than
+    # failing on the very first read.
+    max_attempts = 10
+    delay = 0.4
     last_exc: Exception | None = None
-    for attempt in range(5):
+    last_detail = ""
+
+    for attempt in range(max_attempts):
         try:
             with open(JWT_FILE) as f:
-                data = json.load(f)
+                raw = f.read()
+            if not raw.strip():
+                raise ValueError("file was empty")
+            data = json.loads(raw)
             return data["access_token"]
         except FileNotFoundError as exc:
+            last_exc, last_detail = exc, "file does not exist"
+        except (json.JSONDecodeError, ValueError) as exc:
+            last_exc, last_detail = exc, f"content was not valid JSON ({exc}); {len(raw)} bytes read"
+        except KeyError as exc:
             last_exc = exc
-        except (KeyError, json.JSONDecodeError) as exc:
-            last_exc = exc
-        if attempt < 4:
-            time.sleep(0.5)
+            # Never surface token *values* here -- only structural info (key
+            # names, value types/lengths) so a pasted error can't leak a secret.
+            shape = {
+                k: (f"str[{len(v)}]" if isinstance(v, str) else type(v).__name__)
+                for k, v in data.items()
+            }
+            last_detail = f"parsed JSON but had no 'access_token' key; keys present: {shape}"
+        except OSError as exc:
+            last_exc, last_detail = exc, f"OS error reading file: {exc}"
+        if attempt < max_attempts - 1:
+            time.sleep(delay)
+            delay = min(delay * 1.3, 2.0)
 
     if isinstance(last_exc, FileNotFoundError):
         raise TokenUnavailableError(
-            f"Could not find a JWT at {JWT_FILE}. This app expects to run "
-            "inside a Cloudera AI Workbench Session, Application, or Job, "
-            "which mounts a workload token automatically. For local "
-            "development, export CDP_TOKEN with a valid Cloudera AI token."
+            f"Could not find a JWT at {JWT_FILE} after retrying for ~11s. "
+            "This app expects to run inside a Cloudera AI Workbench Session, "
+            "Application, or Job, which mounts a workload token "
+            "automatically. For local development, export CDP_TOKEN with a "
+            "valid Cloudera AI token."
         ) from last_exc
 
-    keys_present = "<file unreadable>"
-    try:
-        with open(JWT_FILE) as f:
-            keys_present = list(json.load(f).keys())
-    except Exception:  # noqa: BLE001 - this is just for the error message
-        pass
     raise TokenUnavailableError(
-        f"{JWT_FILE} did not contain the expected 'access_token' field after "
-        f"retrying for 2s. Keys actually present: {keys_present}."
+        f"Could not get a usable access_token from {JWT_FILE} after "
+        f"{max_attempts} attempts over ~11s. Last attempt: {last_detail}."
     ) from last_exc
 
 

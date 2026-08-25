@@ -14,6 +14,7 @@ SOC analysis orchestration: a two-stage "agentic SOC" style pipeline --
 
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 
 from src.config import ModelConfig
@@ -109,57 +110,75 @@ def chunk(items: list, size: int) -> list[list]:
     return [items[i : i + size] for i in range(0, len(items), size)]
 
 
+def _score_batch(batch: list[dict], model_cfg: ModelConfig) -> tuple[list[dict], ChatResult]:
+    payload = [_strip_for_model(e) for e in batch]
+    messages = [
+        {"role": "system", "content": TRIAGE_SYSTEM_PROMPT},
+        {"role": "user", "content": json.dumps(payload)},
+    ]
+    res: ChatResult = chat(model_cfg, messages, temperature=0.0, max_tokens=1200)
+    return batch, res
+
+
 def triage_events(
     events: list[dict],
     model_cfg: ModelConfig,
     metrics: WorkMetrics,
     batch_size: int = 8,
+    concurrency: int = 6,
 ) -> dict[str, dict]:
     """Score every event for risk. Returns {event_id: {risk, category, reason}}.
 
     Batches events into groups of `batch_size` per call -- large enough to
     be efficient, small enough to keep each call fast and the JSON short
-    enough for a 7B model to return reliably.
+    enough for a 7B model to return reliably. Batches are independent, so
+    up to `concurrency` of them run at once (same pattern as the Traffic
+    Generator page) -- with ~24 batches at ~6s each, running them one at a
+    time takes ~2.5 minutes; a handful in flight together cuts that to
+    well under a minute.
+
+    All shared-state mutation (results dict, metrics counters) happens back
+    on the calling thread as each future completes, not inside the worker
+    threads, so this stays race-free without needing an explicit lock.
     """
     results: dict[str, dict] = {}
-    for batch in chunk(events, batch_size):
-        payload = [_strip_for_model(e) for e in batch]
-        messages = [
-            {"role": "system", "content": TRIAGE_SYSTEM_PROMPT},
-            {"role": "user", "content": json.dumps(payload)},
-        ]
-        res: ChatResult = chat(model_cfg, messages, temperature=0.0, max_tokens=1200)
-        metrics.triage_calls += 1
-        metrics.triage_latency_s += res.latency_s
-        metrics.events_triaged += len(batch)
+    batches = chunk(events, batch_size)
 
-        if res.error:
-            metrics.errors += 1
+    with ThreadPoolExecutor(max_workers=concurrency) as pool:
+        futures = [pool.submit(_score_batch, batch, model_cfg) for batch in batches]
+        for future in as_completed(futures):
+            batch, res = future.result()
+            metrics.triage_calls += 1
+            metrics.triage_latency_s += res.latency_s
+            metrics.events_triaged += len(batch)
+
+            if res.error:
+                metrics.errors += 1
+                for e in batch:
+                    results[e["id"]] = {"risk": "unknown", "category": "error", "reason": res.error}
+                continue
+
+            parsed = extract_json(res.text)
+            if not isinstance(parsed, list):
+                metrics.errors += 1
+                for e in batch:
+                    results[e["id"]] = {
+                        "risk": "unknown", "category": "parse_error",
+                        "reason": "Model response was not valid JSON.",
+                    }
+                continue
+
+            by_id = {row.get("id"): row for row in parsed if isinstance(row, dict)}
             for e in batch:
-                results[e["id"]] = {"risk": "unknown", "category": "error", "reason": res.error}
-            continue
-
-        parsed = extract_json(res.text)
-        if not isinstance(parsed, list):
-            metrics.errors += 1
-            for e in batch:
-                results[e["id"]] = {
-                    "risk": "unknown", "category": "parse_error",
-                    "reason": "Model response was not valid JSON.",
-                }
-            continue
-
-        by_id = {row.get("id"): row for row in parsed if isinstance(row, dict)}
-        for e in batch:
-            row = by_id.get(e["id"])
-            if row:
-                results[e["id"]] = {
-                    "risk": row.get("risk", "unknown"),
-                    "category": row.get("category", ""),
-                    "reason": row.get("reason", ""),
-                }
-            else:
-                results[e["id"]] = {"risk": "unknown", "category": "missing", "reason": "No triage result returned."}
+                row = by_id.get(e["id"])
+                if row:
+                    results[e["id"]] = {
+                        "risk": row.get("risk", "unknown"),
+                        "category": row.get("category", ""),
+                        "reason": row.get("reason", ""),
+                    }
+                else:
+                    results[e["id"]] = {"risk": "unknown", "category": "missing", "reason": "No triage result returned."}
 
     metrics.high_risk_found += sum(1 for r in results.values() if r["risk"] == "high")
     return results

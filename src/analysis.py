@@ -120,6 +120,36 @@ def _score_batch(batch: list[dict], model_cfg: ModelConfig) -> tuple[list[dict],
     return batch, res
 
 
+def parse_triage_batch(batch: list[dict], res: ChatResult) -> dict[str, dict]:
+    """Turn one triage ChatResult into {event_id: {risk, category, reason}}
+    for every event in the batch it was scored from. Shared by the main
+    triage pipeline and the Live Stream demo so both parse identically.
+    """
+    if res.error:
+        return {e["id"]: {"risk": "unknown", "category": "error", "reason": res.error} for e in batch}
+
+    parsed = extract_json(res.text)
+    if not isinstance(parsed, list):
+        return {
+            e["id"]: {"risk": "unknown", "category": "parse_error", "reason": "Model response was not valid JSON."}
+            for e in batch
+        }
+
+    by_id = {row.get("id"): row for row in parsed if isinstance(row, dict)}
+    results = {}
+    for e in batch:
+        row = by_id.get(e["id"])
+        if row:
+            results[e["id"]] = {
+                "risk": row.get("risk", "unknown"),
+                "category": row.get("category", ""),
+                "reason": row.get("reason", ""),
+            }
+        else:
+            results[e["id"]] = {"risk": "unknown", "category": "missing", "reason": "No triage result returned."}
+    return results
+
+
 def triage_events(
     events: list[dict],
     model_cfg: ModelConfig,
@@ -152,33 +182,10 @@ def triage_events(
             metrics.triage_latency_s += res.latency_s
             metrics.events_triaged += len(batch)
 
-            if res.error:
+            batch_results = parse_triage_batch(batch, res)
+            if res.error or any(v["category"] in ("error", "parse_error") for v in batch_results.values()):
                 metrics.errors += 1
-                for e in batch:
-                    results[e["id"]] = {"risk": "unknown", "category": "error", "reason": res.error}
-                continue
-
-            parsed = extract_json(res.text)
-            if not isinstance(parsed, list):
-                metrics.errors += 1
-                for e in batch:
-                    results[e["id"]] = {
-                        "risk": "unknown", "category": "parse_error",
-                        "reason": "Model response was not valid JSON.",
-                    }
-                continue
-
-            by_id = {row.get("id"): row for row in parsed if isinstance(row, dict)}
-            for e in batch:
-                row = by_id.get(e["id"])
-                if row:
-                    results[e["id"]] = {
-                        "risk": row.get("risk", "unknown"),
-                        "category": row.get("category", ""),
-                        "reason": row.get("reason", ""),
-                    }
-                else:
-                    results[e["id"]] = {"risk": "unknown", "category": "missing", "reason": "No triage result returned."}
+            results.update(batch_results)
 
     metrics.high_risk_found += sum(1 for r in results.values() if r["risk"] == "high")
     return results

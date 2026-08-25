@@ -216,6 +216,28 @@ def generate_dataset(seed: int = SEED) -> dict[str, list[dict]]:
     }
 
 
+def stream_batches(batch_size: int = 8, seed: int = SEED):
+    """Yields an endless sequence of `batch_size`-event batches for the Live
+    Stream demo -- cycles through the same scenario pool used everywhere
+    else in this repo, but relabels each emitted event with a fresh id and
+    a live "now" timestamp so it reads as freshly-arrived telemetry rather
+    than a replay of the static sample dataset.
+    """
+    pool = []
+    for events in generate_dataset(seed).values():
+        pool.extend(events)
+    seq = 0
+    while True:
+        batch = []
+        for _ in range(batch_size):
+            event = dict(pool[seq % len(pool)])
+            seq += 1
+            event["id"] = f"stream-{seq:07d}"
+            event["timestamp"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            batch.append(event)
+        yield batch
+
+
 def write_dataset(out_dir: str, seed: int = SEED) -> None:
     os.makedirs(out_dir, exist_ok=True)
     for name, events in generate_dataset(seed).items():

@@ -75,13 +75,16 @@ with col3:
 st.divider()
 
 st.subheader("Try it")
-c1, c2 = st.columns(2)
+c1, c2, c3 = st.columns(3)
 with c1:
     st.page_link("pages/1_Triage_and_Investigate.py", label="🔍 Triage & Investigate", icon="🔍")
     st.caption("Run the full pipeline over synthetic SOC telemetry and read the generated investigation report.")
 with c2:
     st.page_link("pages/2_Traffic_Generator.py", label="📈 Traffic Generator", icon="📈")
     st.caption("Send configurable, concurrent request volume at either endpoint to exercise Cloudera AI Inference Service.")
+with c3:
+    st.page_link("pages/4_Live_Stream.py", label="📡 Live Stream", icon="📡")
+    st.caption("Sustain a target events/sec of real triage calls — the live version of the ROI breakeven number.")
 
 st.divider()
 

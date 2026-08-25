@@ -9,6 +9,7 @@ src/llm_client.py) talks to either one just by swapping base_url + model.
 
 import json
 import os
+import time
 from dataclasses import dataclass
 
 
@@ -83,20 +84,41 @@ def get_access_token() -> str:
         if os.environ.get(env_var):
             return os.environ[env_var]
 
-    try:
-        with open(JWT_FILE) as f:
-            return json.load(f)["access_token"]
-    except FileNotFoundError as exc:
+    # The platform's token-refresh sidecar can take a moment to (re)populate
+    # this file right after a session/application starts, so a request that
+    # lands in that window can catch it mid-write or with placeholder
+    # content. Retry briefly rather than failing on the very first read.
+    last_exc: Exception | None = None
+    for attempt in range(5):
+        try:
+            with open(JWT_FILE) as f:
+                data = json.load(f)
+            return data["access_token"]
+        except FileNotFoundError as exc:
+            last_exc = exc
+        except (KeyError, json.JSONDecodeError) as exc:
+            last_exc = exc
+        if attempt < 4:
+            time.sleep(0.5)
+
+    if isinstance(last_exc, FileNotFoundError):
         raise TokenUnavailableError(
             f"Could not find a JWT at {JWT_FILE}. This app expects to run "
             "inside a Cloudera AI Workbench Session, Application, or Job, "
             "which mounts a workload token automatically. For local "
             "development, export CDP_TOKEN with a valid Cloudera AI token."
-        ) from exc
-    except (KeyError, json.JSONDecodeError) as exc:
-        raise TokenUnavailableError(
-            f"{JWT_FILE} did not contain the expected 'access_token' field."
-        ) from exc
+        ) from last_exc
+
+    keys_present = "<file unreadable>"
+    try:
+        with open(JWT_FILE) as f:
+            keys_present = list(json.load(f).keys())
+    except Exception:  # noqa: BLE001 - this is just for the error message
+        pass
+    raise TokenUnavailableError(
+        f"{JWT_FILE} did not contain the expected 'access_token' field after "
+        f"retrying for 2s. Keys actually present: {keys_present}."
+    ) from last_exc
 
 
 SAMPLE_LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "sample_logs")

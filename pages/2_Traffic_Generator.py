@@ -158,7 +158,7 @@ if "traffic_df" in st.session_state:
         fig2.update_layout(height=300, margin=dict(l=10, r=10, t=30, b=10))
         st.plotly_chart(fig2, use_container_width=True)
     except ImportError:
-        st.bar_chart(df.set_index("seq")["latency_s"])
+        st.bar_chart(df.set_index("seq")["latency_s"], x_label="Request order", y_label="Latency (s)")
 
     failures = df[~df["success"]]
     if len(failures):

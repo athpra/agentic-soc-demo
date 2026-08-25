@@ -239,7 +239,7 @@ if run:
 
         if per_sec:
             df = pd.DataFrame({"second": list(per_sec.keys()), "events/sec": list(per_sec.values())}).sort_values("second")
-            chart_ph.bar_chart(df.set_index("second"))
+            chart_ph.bar_chart(df.set_index("second"), x_label="Seconds since start", y_label="Events triaged")
 
         with risk_ph.container():
             r1, r2, r3, r4 = st.columns(4)

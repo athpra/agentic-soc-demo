@@ -155,6 +155,14 @@ if run:
     invest_kpi_ph = st.empty()
     chart_ph = st.empty()
     risk_ph = st.empty()
+    st.caption(
+        "ℹ️ Investigations here fire on a **fixed schedule** (1 per "
+        f"{EVENTS_PER_INVESTIGATION} events triaged, matching the ROI cost model's assumed "
+        "ratio) against a fixed real escalation payload — they don't track how many events "
+        "triage actually marks `high` above. Investigating every real high-risk finding would "
+        "be a much higher-volume (and higher-cost) workload than the one these numbers price; "
+        "the fixed cadence is what keeps this page's cost figures consistent with the ROI artifact."
+    )
 
     events_done = 0
     batch_errors = 0

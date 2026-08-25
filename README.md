@@ -13,7 +13,7 @@ It runs a two-stage pipeline over synthetic SOC log data:
 
 The framing — route by value, investigate with a governed agent, measure work delivered
 rather than tokens processed — borrows from a general "agentic SOC" pattern several
-security operations vendors describe publicly. See [`pages/3_About.py`](pages/3_About.py)
+security operations vendors describe publicly. See [`pages/4_About.py`](pages/4_About.py)
 for that framing in more detail and an explicit disclaimer: **this project is an
 independent reference build and is not modeled on, affiliated with, or endorsed by any
 specific security operations vendor.**
@@ -28,7 +28,10 @@ specific security operations vendor.**
 - **Traffic Generator** (`pages/2_Traffic_Generator.py`) — fires a configurable number of
   concurrent requests at either or both endpoints (SOC-flavored prompts, not throwaway
   pings) so you can watch latency, throughput, and utilization on the endpoint side.
-- **About** (`pages/3_About.py`) — the "agentic SOC" framing this demo borrows from, and a
+- **Live Stream** (`pages/3_Live_Stream.py`) — sustains a target events/sec of real triage
+  calls against the live endpoint, with a live-updating throughput dashboard. Built to make
+  a cost model's EPS breakeven number (see below) tangible against real traffic.
+- **About** (`pages/4_About.py`) — the "agentic SOC" framing this demo borrows from, and a
   plain statement of what the project is and isn't.
 
 ## Repo layout

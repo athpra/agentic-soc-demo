@@ -83,7 +83,7 @@ with c2:
     st.page_link("pages/2_Traffic_Generator.py", label="📈 Traffic Generator", icon="📈")
     st.caption("Send configurable, concurrent request volume at either endpoint to exercise Cloudera AI Inference Service.")
 with c3:
-    st.page_link("pages/4_Live_Stream.py", label="📡 Live Stream", icon="📡")
+    st.page_link("pages/3_Live_Stream.py", label="📡 Live Stream", icon="📡")
     st.caption("Sustain a target events/sec of real triage calls — the live version of the ROI breakeven number.")
 
 st.divider()

@@ -216,6 +216,20 @@ def generate_dataset(seed: int = SEED) -> dict[str, list[dict]]:
     }
 
 
+DEMO_ESCALATION_IDS = {"edr-0003", "edr-0004", "cloud-0019", "auth-0032", "fw-0134", "cloud-0018"}
+
+
+def get_demo_escalation(seed: int = SEED) -> list[dict]:
+    """The same 6-event attack-chain escalation used elsewhere in the demo
+    (Triage & Investigate's default high-risk picks, plus the two events
+    triage under-scores) -- reused by the Live Stream page so its
+    investigation calls are the real thing, not a placeholder payload."""
+    pool = []
+    for events in generate_dataset(seed).values():
+        pool.extend(events)
+    return [e for e in pool if e["id"] in DEMO_ESCALATION_IDS]
+
+
 def stream_batches(batch_size: int = 8, seed: int = SEED):
     """Yields an endless sequence of `batch_size`-event batches for the Live
     Stream demo -- cycles through the same scenario pool used everywhere

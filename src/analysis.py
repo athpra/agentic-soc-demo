@@ -221,13 +221,9 @@ def strip_reasoning_preamble(text: str) -> tuple[str, str | None]:
     return text, reasoning
 
 
-def investigate_events(
-    events: list[dict],
-    model_cfg: ModelConfig,
-    metrics: WorkMetrics,
-) -> ChatResult:
-    """Run the deep-investigation pass over an already-escalated set of
-    events (typically the 'high' risk output of triage_events)."""
+def _call_investigation(events: list[dict], model_cfg: ModelConfig) -> ChatResult:
+    """Pure investigation call: no metrics mutation, safe to run from a
+    worker thread (see triage_events' docstring for why that matters)."""
     payload = [_strip_for_model(e) for e in events]
     messages = [
         {"role": "system", "content": INVESTIGATE_SYSTEM_PROMPT},
@@ -236,11 +232,23 @@ def investigate_events(
     # max_tokens is generous: reasoning-tuned models can spend a large chunk
     # of the budget thinking out loud before writing the report itself.
     res = chat(model_cfg, messages, temperature=0.2, max_tokens=3500)
+    if not res.error:
+        res.text, res.reasoning = strip_reasoning_preamble(res.text)
+    return res
+
+
+def investigate_events(
+    events: list[dict],
+    model_cfg: ModelConfig,
+    metrics: WorkMetrics,
+) -> ChatResult:
+    """Run the deep-investigation pass over an already-escalated set of
+    events (typically the 'high' risk output of triage_events)."""
+    res = _call_investigation(events, model_cfg)
     metrics.investigation_calls += 1
     metrics.investigation_latency_s += res.latency_s
     if res.error:
         metrics.errors += 1
     else:
         metrics.investigations_run += 1
-        res.text, res.reasoning = strip_reasoning_preamble(res.text)
     return res

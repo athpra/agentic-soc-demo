@@ -70,6 +70,11 @@ FRONTIER_PRICING = {
     "Claude Sonnet 5 → Opus 5": {"triage": (3.00, 15.00), "investigate": (5.00, 25.00)},
 }
 
+# Self-hosted Cloudera AI Inference: fixed annual cost regardless of volume,
+# reused from the sibling PoC's real deployment of these same two models
+# (1x A10G Qwen + 4x A10G Nemotron) -- matches the ROI artifact exactly.
+CLOUDERA_FIXED_ANNUAL = 26_000 + 86_000
+
 st.subheader("Configuration")
 c1, c2 = st.columns(2)
 with c1:
@@ -334,6 +339,47 @@ if run:
     st.caption(
         "Self-hosted Cloudera AI Inference bills by fixed GPU capacity, not by this run — see the "
         "ROI artifact for the breakeven volume where that fixed cost beats these per-token totals."
+    )
+
+    # --- annualized projection at this run's actual demonstrated rate -----
+    st.subheader("If sustained year-round at this rate")
+    events_per_year = steady_eps * 86400 * 365
+    investigations_per_year = events_per_year / EVENTS_PER_INVESTIGATION
+    batches_per_year = events_per_year / BATCH_SIZE
+
+    st.caption(
+        f"Not a projection from a target — this extrapolates the {steady_eps:.1f} EPS this run "
+        f"actually sustained ({events_per_year:,.0f} events/yr, {investigations_per_year:,.0f} "
+        "investigations/yr) out to a full year, and compares it against Cloudera's fixed cost."
+    )
+
+    annual_rows = [{"Option": "Cloudera AI Inference (fixed)", "Annual cost": f"${CLOUDERA_FIXED_ANNUAL:,.0f}", "vs. Cloudera": "—"}]
+    for name, p in FRONTIER_PRICING.items():
+        t_in, t_out = p["triage"]
+        i_in, i_out = p["investigate"]
+        triage_annual = batches_per_year * (avg_t_prompt / 1e6 * t_in + avg_t_completion / 1e6 * t_out)
+        invest_annual = investigations_per_year * (avg_i_prompt / 1e6 * i_in + avg_i_completion / 1e6 * i_out)
+        total_annual = triage_annual + invest_annual
+        delta = CLOUDERA_FIXED_ANNUAL - total_annual
+        sign = "cheaper" if delta > 0 else "more expensive"
+        annual_rows.append({
+            "Option": name,
+            "Annual cost": f"${total_annual:,.0f}",
+            "vs. Cloudera": f"Cloudera {sign} by ${abs(delta):,.0f}",
+        })
+    st.dataframe(pd.DataFrame(annual_rows), use_container_width=True, hide_index=True)
+
+    beats_all = all(
+        CLOUDERA_FIXED_ANNUAL
+        < batches_per_year * (avg_t_prompt / 1e6 * p["triage"][0] + avg_t_completion / 1e6 * p["triage"][1])
+        + investigations_per_year * (avg_i_prompt / 1e6 * p["investigate"][0] + avg_i_completion / 1e6 * p["investigate"][1])
+        for p in FRONTIER_PRICING.values()
+    )
+    st.caption(
+        "At this demonstrated rate, Cloudera beats every frontier pairing above." if beats_all else
+        "At this demonstrated rate, Cloudera doesn't yet beat every frontier pairing above — the "
+        "governance argument (telemetry never leaves the platform) holds regardless; the pure cost "
+        "argument needs a higher sustained rate against whichever pairing still shows cheaper."
     )
 else:
     st.info("Configure a target rate and duration above, then click **Start stream**.")

@@ -361,7 +361,9 @@ if run:
         invest_annual = investigations_per_year * (avg_i_prompt / 1e6 * i_in + avg_i_completion / 1e6 * i_out)
         total_annual = triage_annual + invest_annual
         delta = CLOUDERA_FIXED_ANNUAL - total_annual
-        sign = "cheaper" if delta > 0 else "more expensive"
+        # delta = Cloudera - frontier: positive means Cloudera costs MORE,
+        # negative means Cloudera costs LESS (i.e. is cheaper).
+        sign = "more expensive" if delta > 0 else "cheaper"
         annual_rows.append({
             "Option": name,
             "Annual cost": f"${total_annual:,.0f}",

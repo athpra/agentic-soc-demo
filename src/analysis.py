@@ -13,6 +13,7 @@ SOC analysis orchestration: a two-stage "agentic SOC" style pipeline --
 """
 
 import json
+import re
 from dataclasses import dataclass, field
 
 from src.config import ModelConfig
@@ -63,6 +64,10 @@ Low/Medium/High, with a one-sentence justification.
 
 Be precise and evidence-based. If the evidence does not support an \
 escalation, say so plainly rather than manufacturing urgency.
+
+Reply with ONLY the report. Do not include any reasoning, planning, or \
+preamble before it -- your response must begin immediately with the text \
+"## Executive Summary" and contain nothing before that heading.
 """
 
 
@@ -160,6 +165,36 @@ def triage_events(
     return results
 
 
+_THINK_TAG_RE = re.compile(r"<think(?:ing)?>.*?</think(?:ing)?>", re.IGNORECASE | re.DOTALL)
+_REPORT_HEADING_RE = re.compile(r"^#{0,3}\s*Executive Summary\s*$", re.IGNORECASE | re.MULTILINE)
+
+
+def strip_reasoning_preamble(text: str) -> tuple[str, str | None]:
+    """Some reasoning-tuned models (Nemotron included) inline their
+    chain-of-thought ahead of the actual answer instead of returning it in a
+    separate field -- either wrapped in <think> tags, or as unwrapped prose
+    like "We need to produce a report... Let's decode the base64...".
+
+    Splits that off so the UI shows only the finished report by default,
+    while keeping the reasoning available (e.g. for an optional "show
+    reasoning" expander) rather than silently discarding it.
+    """
+    reasoning_parts = []
+
+    tagged = _THINK_TAG_RE.search(text)
+    if tagged:
+        reasoning_parts.append(tagged.group(0))
+        text = _THINK_TAG_RE.sub("", text).strip()
+
+    match = _REPORT_HEADING_RE.search(text)
+    if match and match.start() > 40:
+        reasoning_parts.append(text[: match.start()].strip())
+        text = text[match.start() :].strip()
+
+    reasoning = "\n\n".join(p for p in reasoning_parts if p) or None
+    return text, reasoning
+
+
 def investigate_events(
     events: list[dict],
     model_cfg: ModelConfig,
@@ -172,11 +207,14 @@ def investigate_events(
         {"role": "system", "content": INVESTIGATE_SYSTEM_PROMPT},
         {"role": "user", "content": json.dumps(payload, indent=2)},
     ]
-    res = chat(model_cfg, messages, temperature=0.2, max_tokens=1800)
+    # max_tokens is generous: reasoning-tuned models can spend a large chunk
+    # of the budget thinking out loud before writing the report itself.
+    res = chat(model_cfg, messages, temperature=0.2, max_tokens=3500)
     metrics.investigation_calls += 1
     metrics.investigation_latency_s += res.latency_s
     if res.error:
         metrics.errors += 1
     else:
         metrics.investigations_run += 1
+        res.text, res.reasoning = strip_reasoning_preamble(res.text)
     return res

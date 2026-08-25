@@ -25,6 +25,10 @@ class ChatResult:
     model: str = ""
     error: Optional[str] = None
     raw: Any = field(default=None, repr=False)
+    # Populated by callers (see analysis.strip_reasoning_preamble) when a
+    # reasoning-tuned model inlines its chain-of-thought ahead of the real
+    # answer instead of returning it in a separate field.
+    reasoning: Optional[str] = None
 
 
 def _client_for(model_cfg: ModelConfig) -> OpenAI:

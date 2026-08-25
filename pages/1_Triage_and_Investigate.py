@@ -166,6 +166,9 @@ if st.session_state.triage_results:
             st.code(res.error, language="text")
         else:
             st.success(f"Investigation completed in {res.latency_s:.2f}s")
+            if getattr(res, "reasoning", None):
+                with st.expander("Model's reasoning trace (shown for transparency, not part of the report)"):
+                    st.text(res.reasoning)
             st.markdown(res.text)
 
     st.divider()

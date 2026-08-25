@@ -89,10 +89,10 @@ streamlit run app.py
    the session terminal, and open it via the session's application preview.
 3. **Application (persistent demo):** in the Project, go to **Applications → New
    Application**, and set:
-   - **Script:** leave blank and instead set **Subdomain** + this **Command**:
-     ```
-     streamlit run app.py --server.port $CDSW_APP_PORT --server.address 127.0.0.1 --server.headless true
-     ```
+   - **Subdomain:** anything, e.g. `agentic-soc`
+   - **Script:** `launch_app.py` — CML Applications run a Python script rather than an
+     arbitrary shell command, so this small script just launches
+     `streamlit run app.py` as a subprocess on the port CML assigns it.
    - **Build:** `cdsw-build.sh` is picked up automatically to install dependencies.
    - **Resource profile:** minimal CPU/memory is enough — this app only makes outbound
      calls to the inference endpoints, it doesn't run any models itself.

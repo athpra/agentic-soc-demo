@@ -13,7 +13,7 @@ It runs a two-stage pipeline over synthetic SOC log data:
 
 The framing — route by value, investigate with a governed agent, measure work delivered
 rather than tokens processed — borrows from a general "agentic SOC" pattern several
-security operations vendors describe publicly. See [`pages/4_About.py`](pages/4_About.py)
+security operations vendors describe publicly. See [`pages/5_About.py`](pages/5_About.py)
 for that framing in more detail and an explicit disclaimer: **this project is an
 independent reference build and is not modeled on, affiliated with, or endorsed by any
 specific security operations vendor.**
@@ -31,7 +31,10 @@ specific security operations vendor.**
 - **Live Stream** (`pages/3_Live_Stream.py`) — sustains a target events/sec of real triage
   calls against the live endpoint, with a live-updating throughput dashboard. Built to make
   a cost model's EPS breakeven number (see below) tangible against real traffic.
-- **About** (`pages/4_About.py`) — the "agentic SOC" framing this demo borrows from, and a
+- **Evals** (`pages/4_Evals.py`) — runs the deterministic triage eval from the app and
+  visualizes the scorecard, including a trend across any previously saved runs. Same logic as
+  `scripts/run_evals.py` (see below), both share `src/evals.py`.
+- **About** (`pages/5_About.py`) — the "agentic SOC" framing this demo borrows from, and a
   plain statement of what the project is and isn't.
 
 ## Repo layout
@@ -116,12 +119,15 @@ python scripts/generate_sample_data.py
 
 ## Evaluating the triage agent
 
-`scripts/run_evals.py` is a deterministic eval: it runs the real triage pipeline against the
-bundled dataset and scores the results against the dataset's ground-truth `scenario` labels —
-does it actually catch the seeded attack chain, and does it avoid crying wolf on the
-noisy-scanner red herring and plain baseline noise? Same dataset (seed=42) and
-`temperature=0.0` every run, so results are comparable across runs — rerun it after any prompt
-or model change to see whether it actually helped, not just whether it "seems better."
+`scripts/run_evals.py` (CLI) and `pages/4_Evals.py` (in-app, with charts and a saved-run trend
+view) are both thin wrappers around `src/evals.py` — one deterministic eval that runs the real
+triage pipeline against the bundled dataset and scores the results against the dataset's
+ground-truth `scenario` labels: does it actually catch the seeded attack chain, and does it
+avoid crying wolf on the noisy-scanner red herring and plain baseline noise? Same dataset
+(seed=42) and `temperature=0.0` every run, so results are comparable across runs — rerun it
+after any prompt or model change to see whether it actually helped, not just whether it "seems
+better." The in-app page's "Save this scorecard" button writes to the same `evals/results/`
+directory the CLI's `--save` flag does, so a history built from either shows up in both.
 
 ```bash
 python scripts/run_evals.py            # print a scorecard

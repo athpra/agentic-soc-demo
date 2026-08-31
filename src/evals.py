@@ -13,7 +13,7 @@ run, so results are comparable run-to-run.
 from collections import defaultdict
 
 from src.analysis import WorkMetrics, triage_events
-from src.config import QWEN_TRIAGE
+from src.config import QWEN_TRIAGE, ModelConfig
 from src.log_generator import generate_dataset
 
 # key -> (target, "higher_is_better" | "lower_is_better")
@@ -56,12 +56,18 @@ def verdict(key: str, actual: float) -> bool:
     return actual >= target if direction == "higher_is_better" else actual <= target
 
 
-def run_eval() -> tuple[dict, WorkMetrics, dict[str, list[dict]]]:
+def run_eval(model_cfg: ModelConfig = QWEN_TRIAGE) -> tuple[dict, WorkMetrics, dict[str, list[dict]]]:
     """Runs the real triage pipeline against the ground-truth dataset and
-    computes the scorecard. No printing/UI here -- callers render it."""
+    computes the scorecard. No printing/UI here -- callers render it.
+
+    `model_cfg` defaults to the main Cloudera Qwen triage model, but accepts
+    any ModelConfig -- e.g. a same-family model on a different provider, for
+    pages/5_Benchmark.py's cross-platform quality comparison. The eval logic
+    itself is provider-agnostic; only the model actually being scored changes.
+    """
     events = load_ground_truth()
     metrics = WorkMetrics()
-    results = triage_events(events, QWEN_TRIAGE, metrics)
+    results = triage_events(events, model_cfg, metrics)
 
     by_scenario: dict[str, list[dict]] = defaultdict(list)
     for e in events:

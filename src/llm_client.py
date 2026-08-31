@@ -12,7 +12,7 @@ from typing import Any, Optional
 
 from openai import OpenAI
 
-from src.config import ModelConfig, get_access_token
+from src.config import ModelConfig, get_api_key
 
 
 @dataclass
@@ -32,9 +32,10 @@ class ChatResult:
 
 
 def _client_for(model_cfg: ModelConfig) -> OpenAI:
-    # A fresh client is cheap and guarantees we always use a current token,
+    # A fresh client is cheap and guarantees we always use a current key,
     # since Cloudera AI Workbench rotates the underlying JWT periodically.
-    return OpenAI(base_url=model_cfg.base_url, api_key=get_access_token())
+    # get_api_key() dispatches to the right auth mechanism per provider.
+    return OpenAI(base_url=model_cfg.base_url, api_key=get_api_key(model_cfg))
 
 
 def chat(

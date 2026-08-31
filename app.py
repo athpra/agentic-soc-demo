@@ -75,7 +75,7 @@ with col3:
 st.divider()
 
 st.subheader("Try it")
-c1, c2, c3, c4 = st.columns(4)
+c1, c2, c3 = st.columns(3)
 with c1:
     st.page_link("pages/1_Triage_and_Investigate.py", label="🔍 Triage & Investigate", icon="🔍")
     st.caption("Run the full pipeline over synthetic SOC telemetry and read the generated investigation report.")
@@ -85,9 +85,14 @@ with c2:
 with c3:
     st.page_link("pages/3_Live_Stream.py", label="📡 Live Stream", icon="📡")
     st.caption("Sustain a target events/sec of real triage calls — the live version of the ROI breakeven number.")
+
+c4, c5 = st.columns(2)
 with c4:
     st.page_link("pages/4_Evals.py", label="🧪 Evals", icon="🧪")
     st.caption("Score triage against the dataset's ground-truth labels — rerun after any prompt change.")
+with c5:
+    st.page_link("pages/5_Benchmark.py", label="⚡ Benchmark", icon="⚡")
+    st.caption("Compare the same model family's latency, throughput, and quality across Cloudera AI Inference and Fireworks AI.")
 
 st.divider()
 

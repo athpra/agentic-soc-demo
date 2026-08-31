@@ -15,11 +15,13 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class ModelConfig:
-    key: str            # internal key used throughout the app
-    label: str          # human-friendly display name
-    role: str           # narrative role this model plays in the demo
-    base_url: str       # OpenAI-compatible base URL for this endpoint
-    model_id: str       # value sent in the "model" field of each request
+    key: str                       # internal key used throughout the app
+    label: str                     # human-friendly display name
+    role: str                      # narrative role this model plays in the demo
+    base_url: str                  # OpenAI-compatible base URL for this endpoint
+    model_id: str                  # value sent in the "model" field of each request
+    provider: str = "cloudera"     # "cloudera" (JWT auth) | "api_key" (static key via env var)
+    api_key_env: str | None = None  # env var holding the key, when provider == "api_key"
 
 
 # --- Cloudera AI Inference Service endpoints -------------------------------
@@ -54,6 +56,27 @@ NEMOTRON_INVESTIGATE = ModelConfig(
 MODELS = {
     QWEN_TRIAGE.key: QWEN_TRIAGE,
     NEMOTRON_INVESTIGATE.key: NEMOTRON_INVESTIGATE,
+}
+
+# --- Cross-platform benchmark comparisons -----------------------------------
+#
+# Same model family as QWEN_TRIAGE, hosted on a different inference platform,
+# for pages/5_Benchmark.py -- same weights, different serving stack, so any
+# latency/throughput/quality difference is about the platform, not the model.
+# Fireworks uses a plain API key (no Cloudera workload JWT), set via env var.
+QWEN_FIREWORKS = ModelConfig(
+    key="qwen2.5-7b-instruct-fireworks",
+    label="Qwen2.5-7B-Instruct (Fireworks AI)",
+    role="Benchmark comparison",
+    base_url="https://api.fireworks.ai/inference/v1",
+    model_id="accounts/fireworks/models/qwen2p5-7b-instruct",
+    provider="api_key",
+    api_key_env="FIREWORKS_API_KEY",
+)
+
+BENCHMARK_MODELS = {
+    QWEN_TRIAGE.key: QWEN_TRIAGE,
+    QWEN_FIREWORKS.key: QWEN_FIREWORKS,
 }
 
 # --- Auth --------------------------------------------------------------
@@ -146,6 +169,41 @@ def get_access_token() -> str:
         f"Could not get a usable access_token from {JWT_FILE} after "
         f"{max_attempts} attempts over ~11s. Last attempt: {last_detail}."
     ) from last_exc
+
+
+def get_api_key(model_cfg: ModelConfig) -> str:
+    """Dispatch to the right auth mechanism for this model's provider.
+
+    Cloudera-hosted models use the workload JWT (get_access_token). Other
+    providers (Fireworks, etc.) use a plain, static API key read from the
+    env var named in model_cfg.api_key_env.
+    """
+    if model_cfg.provider == "cloudera":
+        return get_access_token()
+
+    if model_cfg.provider == "api_key":
+        if not model_cfg.api_key_env:
+            raise TokenUnavailableError(f"{model_cfg.label} has provider='api_key' but no api_key_env set.")
+        key = os.environ.get(model_cfg.api_key_env)
+        if not key:
+            raise TokenUnavailableError(
+                f"{model_cfg.label} needs an API key. Export {model_cfg.api_key_env} "
+                f"with a valid key for this provider, then retry."
+            )
+        return key
+
+    raise TokenUnavailableError(f"{model_cfg.label} has unknown provider '{model_cfg.provider}'.")
+
+
+def is_configured(model_cfg: ModelConfig) -> bool:
+    """Cheap, side-effect-light check for whether a model's auth is likely
+    available -- used by the UI to gray out / explain unconfigured
+    providers instead of only failing when someone clicks "run"."""
+    if model_cfg.provider == "cloudera":
+        return True  # only knowable for certain by actually reading /tmp/jwt; assume yes
+    if model_cfg.provider == "api_key":
+        return bool(model_cfg.api_key_env and os.environ.get(model_cfg.api_key_env))
+    return False
 
 
 SAMPLE_LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "sample_logs")

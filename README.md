@@ -13,7 +13,7 @@ It runs a two-stage pipeline over synthetic SOC log data:
 
 The framing — route by value, investigate with a governed agent, measure work delivered
 rather than tokens processed — borrows from a general "agentic SOC" pattern several
-security operations vendors describe publicly. See [`pages/5_About.py`](pages/5_About.py)
+security operations vendors describe publicly. See [`pages/6_About.py`](pages/6_About.py)
 for that framing in more detail and an explicit disclaimer: **this project is an
 independent reference build and is not modeled on, affiliated with, or endorsed by any
 specific security operations vendor.**
@@ -34,7 +34,10 @@ specific security operations vendor.**
 - **Evals** (`pages/4_Evals.py`) — runs the deterministic triage eval from the app and
   visualizes the scorecard, including a trend across any previously saved runs. Same logic as
   `scripts/run_evals.py` (see below), both share `src/evals.py`.
-- **About** (`pages/5_About.py`) — the "agentic SOC" framing this demo borrows from, and a
+- **Benchmark** (`pages/5_Benchmark.py`) — compares Qwen2.5-7B-Instruct's latency, throughput,
+  and triage quality across Cloudera AI Inference and Fireworks AI (same model weights, so any
+  gap is about the serving platform, not the model). See **Cross-platform benchmark** below.
+- **About** (`pages/6_About.py`) — the "agentic SOC" framing this demo borrows from, and a
   plain statement of what the project is and isn't.
 
 ## Repo layout
@@ -146,6 +149,27 @@ Scored metrics, against thresholds defined at the top of the script:
 
 Needs the same auth as the rest of the app (Cloudera AI Workbench Session/Application/Job, or
 `CDP_TOKEN` locally).
+
+## Cross-platform benchmark
+
+`pages/5_Benchmark.py` compares `Qwen2.5-7B-Instruct` across two platforms that both serve the
+identical model weights, so latency/throughput/quality differences are attributable to the
+serving stack, not the model:
+
+| Platform | Model config | Auth |
+|---|---|---|
+| Cloudera AI Inference | `src.config.QWEN_TRIAGE` | Workload JWT (automatic, same as the rest of the app) |
+| Fireworks AI | `src.config.QWEN_FIREWORKS` | `FIREWORKS_API_KEY` env var (get one at [fireworks.ai](https://fireworks.ai)) |
+
+Databricks isn't included — `Qwen2.5-7B-Instruct` isn't on their pay-per-token Foundation Model
+API list (only newer Qwen3-series models are, as of when this was checked). Adding it would
+mean self-deploying the model on a Databricks Provisioned Throughput endpoint first, a bigger
+step than an API key — the config in `src/config.py` (`ModelConfig`, `BENCHMARK_MODELS`,
+`get_api_key()`, `is_configured()`) is written so adding a third provider later, Databricks or
+otherwise, is just one more `ModelConfig` entry plus an env var.
+
+The page skips (and clearly marks) any provider whose API key isn't set, rather than failing —
+export `FIREWORKS_API_KEY` and reload to add that leg of the comparison once you have a key.
 
 ## Disclaimer
 

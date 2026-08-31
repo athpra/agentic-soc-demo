@@ -57,22 +57,31 @@ def run_latency_benchmark(
 
 
 def summarize_latencies(rows: list[dict], wall_time_s: float) -> dict:
-    """Aggregate a run_latency_benchmark() result into summary stats."""
-    latencies = sorted(r["latency_s"] for r in rows)
-    n = len(latencies)
+    """Aggregate a run_latency_benchmark() result into summary stats.
+
+    Latency percentiles are computed from successful calls only. A failed
+    call (auth error, connection refused, etc.) often fails almost
+    instantly -- no network round-trip at all -- so mixing its "latency"
+    into the percentiles makes a completely broken provider look fast
+    rather than broken. success_rate and throughput still reflect every
+    attempt, successful or not.
+    """
+    n = len(rows)
     successes = sum(1 for r in rows if r["success"])
+    latencies = sorted(r["latency_s"] for r in rows if r["success"])
+    n_ok = len(latencies)
 
     def _pct(p: float) -> float:
         if not latencies:
             return float("nan")
-        idx = min(n - 1, int(round(p * (n - 1))))
+        idx = min(n_ok - 1, int(round(p * (n_ok - 1))))
         return latencies[idx]
 
     return {
         "n": n,
         "successes": successes,
         "success_rate": successes / n if n else float("nan"),
-        "mean_latency_s": sum(latencies) / n if n else float("nan"),
+        "mean_latency_s": sum(latencies) / n_ok if n_ok else float("nan"),
         "p50_latency_s": _pct(0.50),
         "p95_latency_s": _pct(0.95),
         "max_latency_s": latencies[-1] if latencies else float("nan"),

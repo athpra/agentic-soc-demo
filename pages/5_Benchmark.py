@@ -90,13 +90,16 @@ if "benchmark_summaries" in st.session_state:
     kpi_df = kpi_df[["success_rate", "mean_latency_s", "p50_latency_s", "p95_latency_s", "throughput_rps"]]
     kpi_df.columns = ["Success rate", "Mean latency (s)", "p50 latency (s)", "p95 latency (s)", "Throughput (req/s)"]
     st.dataframe(
-        kpi_df.style.format({
-            "Success rate": "{:.0%}",
-            "Mean latency (s)": "{:.2f}",
-            "p50 latency (s)": "{:.2f}",
-            "p95 latency (s)": "{:.2f}",
-            "Throughput (req/s)": "{:.2f}",
-        }),
+        kpi_df.style.format(
+            {
+                "Success rate": "{:.0%}",
+                "Mean latency (s)": "{:.2f}",
+                "p50 latency (s)": "{:.2f}",
+                "p95 latency (s)": "{:.2f}",
+                "Throughput (req/s)": "{:.2f}",
+            },
+            na_rep="—",  # a provider with 0 successes has no latency to show -- not "nan"
+        ),
         use_container_width=True,
     )
 

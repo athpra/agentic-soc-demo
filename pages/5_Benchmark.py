@@ -32,13 +32,15 @@ st.markdown(
     "throughput, or triage quality is telling you something about the *serving stack*, not "
     "about which model is smarter — with one asterisk: Qwen2.5-7B-Instruct isn't available "
     "serverless on Fireworks, so that leg runs on a dedicated on-demand GPU deployment "
-    "(an H100) rather than shared capacity. Cloudera's endpoint is also dedicated (a single "
-    "A10G), so this is a fair dedicated-vs-dedicated comparison — but an H100 is meaningfully "
-    "more powerful hardware than an A10G, so a Fireworks win on latency is partly \"bigger "
-    "GPU,\" not purely \"better serving stack.\" Worth saying out loud wherever these results "
-    "get shown. Databricks isn't included at all: Qwen2.5-7B-Instruct isn't on their "
-    "pay-per-token Foundation Model API list either, and that path needs a self-deployed "
-    "Provisioned Throughput endpoint."
+    "(an H100) rather than shared capacity. **The GPU backing this project's Cloudera AI "
+    "Inference endpoint hasn't been confirmed** — an earlier version of this page assumed "
+    "A10G, carried over from a different Cloudera demo environment, which was never actually "
+    "verified for *this* one. If Cloudera's side turns out to be on lighter hardware than the "
+    "on-demand H100, a Fireworks latency win is partly \"bigger GPU,\" not purely \"better "
+    "serving stack\" — check your endpoint's resource profile in Cloudera AI Registry / Model "
+    "Serving to know for sure before reading too much into a gap either way. Databricks isn't "
+    "included at all: Qwen2.5-7B-Instruct isn't on their pay-per-token Foundation Model API "
+    "list either, and that path needs a self-deployed Provisioned Throughput endpoint."
 )
 
 st.subheader("Providers")

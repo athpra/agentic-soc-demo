@@ -170,10 +170,13 @@ that as `FIREWORKS_MODEL_ID` (the base URL stays `https://api.fireworks.ai/infer
 either way). That model ID is deployment-specific and meant to be temporary, so it's read from
 an env var rather than hardcoded in `src/config.py`, unlike everything else in this project.
 
-Since Cloudera's own Qwen endpoint is also dedicated capacity (1× A10G, not shared), this ends
-up a fair dedicated-vs-dedicated comparison — but worth saying explicitly: an H100 is
-meaningfully more powerful than an A10G, so a Fireworks win on latency is partly "bigger GPU,"
-not purely "better serving stack."
+Cloudera's own Qwen endpoint is also dedicated capacity, not shared — **but which GPU backs it
+has never actually been confirmed for this project's environment.** An earlier version of this
+doc assumed 1× A10G, carried over unverified from a different Cloudera demo environment. Check
+your endpoint's resource profile in Cloudera AI Registry / Model Serving before trusting a
+Fireworks-vs-Cloudera latency comparison — if Cloudera turns out to be on lighter hardware than
+the on-demand H100 Fireworks needs for this model, a Fireworks win is partly "bigger GPU," not
+purely "better serving stack."
 
 Databricks isn't included at all — `Qwen2.5-7B-Instruct` isn't on their pay-per-token
 Foundation Model API list either (only newer Qwen3-series models are, as of when this was

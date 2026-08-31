@@ -65,11 +65,17 @@ st.divider()
 
 # --- latency / throughput -------------------------------------------------
 st.subheader("Latency & throughput")
-c1, c2 = st.columns(2)
+c1, c2, c3 = st.columns(3)
 with c1:
     n_requests = st.slider("Requests per provider", min_value=5, max_value=200, value=30, step=5)
 with c2:
     concurrency = st.slider("Concurrency", min_value=1, max_value=25, value=6)
+with c3:
+    max_tokens = st.slider(
+        "Max tokens per response", min_value=16, max_value=512, value=128, step=16,
+        help="Higher gives token-throughput numbers more room to reflect real generation speed "
+             "instead of being dominated by prompt processing on a very short response.",
+    )
 
 st.caption(
     "Runs one provider's full load, then the next — sequential across providers so they "
@@ -84,7 +90,7 @@ if run_latency:
     for model_cfg in available_models:
         with st.spinner(f"Benchmarking {model_cfg.label}: {n_requests} requests, concurrency {concurrency}..."):
             t0 = time.perf_counter()
-            rows = run_latency_benchmark(model_cfg, n_requests, concurrency)
+            rows = run_latency_benchmark(model_cfg, n_requests, concurrency, max_tokens=max_tokens)
             wall = time.perf_counter() - t0
         all_rows[model_cfg.label] = rows
         all_summaries[model_cfg.label] = summarize_latencies(rows, wall)
@@ -116,6 +122,38 @@ if "benchmark_summaries" in st.session_state:
         for label, s in summaries.items()
     }).T
     st.bar_chart(chart_df, x_label="Provider", y_label="Latency (s)")
+
+    st.markdown("**Inference throughput (output tokens/sec)**")
+    have_tokens = any(s["n_with_token_usage"] > 0 for s in summaries.values())
+    if have_tokens:
+        tok_df = pd.DataFrame(summaries).T[["n_with_token_usage", "output_tokens_per_sec_aggregate", "output_tokens_per_sec_per_request"]]
+        tok_df.columns = ["Requests with usage data", "Aggregate tok/s (whole run)", "Mean tok/s (per request)"]
+        st.dataframe(
+            tok_df.style.format(
+                {"Aggregate tok/s (whole run)": "{:.1f}", "Mean tok/s (per request)": "{:.1f}"},
+                na_rep="—",
+            ),
+            use_container_width=True,
+        )
+        tok_chart_df = pd.DataFrame({
+            label: {"tok/s (aggregate)": s["output_tokens_per_sec_aggregate"]}
+            for label, s in summaries.items()
+        }).T
+        st.bar_chart(tok_chart_df, x_label="Provider", y_label="Output tokens/sec")
+        st.caption(
+            "Both numbers are derived from real completion_tokens usage the endpoint reported, "
+            "not estimated. **Aggregate** = total output tokens across the whole run ÷ wall "
+            "time — real system throughput at this concurrency. **Per request** = each "
+            "response's own tokens ÷ its own latency, averaged — single-stream generation "
+            "speed. Both include prompt-processing time (this app calls the non-streaming API, "
+            "so there's no separate time-to-first-token to exclude) — an honest ceiling on "
+            "generation speed, not a pure decode-only rate."
+        )
+    else:
+        st.info(
+            "Neither configured endpoint returned token usage on these responses, so "
+            "tokens/sec can't be computed for this run — only requests/sec above."
+        )
 
     all_rows = st.session_state.get("benchmark_rows", {})
     failure_frames = []

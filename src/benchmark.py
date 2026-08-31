@@ -49,7 +49,16 @@ def run_latency_benchmark(
         for future in as_completed(futures):
             seq = futures[future]
             res = future.result()
-            row = {"seq": seq, "latency_s": res.latency_s, "success": res.error is None, "error": res.error}
+            row = {
+                "seq": seq,
+                "latency_s": res.latency_s,
+                "success": res.error is None,
+                "error": res.error,
+                # Real usage from the endpoint's response when it reports one
+                # (same mechanism the Live Stream page uses) -- None if not.
+                "completion_tokens": res.completion_tokens,
+                "prompt_tokens": res.prompt_tokens,
+            }
             rows.append(row)
             if on_result:
                 on_result(row)
@@ -77,6 +86,21 @@ def summarize_latencies(rows: list[dict], wall_time_s: float) -> dict:
         idx = min(n_ok - 1, int(round(p * (n_ok - 1))))
         return latencies[idx]
 
+    # Token throughput: only from successful rows that actually got a real
+    # completion_tokens count back from the endpoint -- not every provider
+    # reports usage on every response. Two numbers, deliberately distinct:
+    #   - aggregate tokens/sec: total output tokens over the whole run's
+    #     wall time -- reflects real system throughput at this concurrency.
+    #   - mean per-request tokens/sec: average of (tokens / that request's
+    #     own latency) -- reflects single-stream generation speed. Both
+    #     numbers include prompt-processing time baked into latency_s (this
+    #     app calls the non-streaming API, so there's no separate
+    #     time-to-first-token to subtract out) -- an honest ceiling on
+    #     generation speed, not a pure decode-only rate.
+    token_rows = [r for r in rows if r["success"] and r["completion_tokens"] is not None]
+    total_completion_tokens = sum(r["completion_tokens"] for r in token_rows)
+    per_request_tps = [r["completion_tokens"] / r["latency_s"] for r in token_rows if r["latency_s"] > 0]
+
     return {
         "n": n,
         "successes": successes,
@@ -87,4 +111,8 @@ def summarize_latencies(rows: list[dict], wall_time_s: float) -> dict:
         "max_latency_s": latencies[-1] if latencies else float("nan"),
         "throughput_rps": n / wall_time_s if wall_time_s > 0 else float("nan"),
         "wall_time_s": wall_time_s,
+        "n_with_token_usage": len(token_rows),
+        "total_completion_tokens": total_completion_tokens,
+        "output_tokens_per_sec_aggregate": (total_completion_tokens / wall_time_s) if token_rows and wall_time_s > 0 else float("nan"),
+        "output_tokens_per_sec_per_request": (sum(per_request_tps) / len(per_request_tps)) if per_request_tps else float("nan"),
     }

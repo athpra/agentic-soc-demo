@@ -109,6 +109,21 @@ if "benchmark_summaries" in st.session_state:
     }).T
     st.bar_chart(chart_df, x_label="Provider", y_label="Latency (s)")
 
+    all_rows = st.session_state.get("benchmark_rows", {})
+    failure_frames = []
+    for label, rows in all_rows.items():
+        for r in rows:
+            if not r["success"]:
+                failure_frames.append({"Provider": label, "seq": r["seq"], "error": r["error"]})
+    if failure_frames:
+        with st.expander(f"⚠️ {len(failure_frames)} failed request(s) — click to see why"):
+            st.dataframe(pd.DataFrame(failure_frames), use_container_width=True, hide_index=True)
+            st.caption(
+                "If every request for a provider failed with the same auth-shaped error, that's "
+                "almost always a missing or invalid API key for that provider, not a real "
+                "performance problem — check the 'Providers' status row above."
+            )
+
 st.divider()
 
 # --- quality / reliability --------------------------------------------------

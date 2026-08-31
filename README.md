@@ -156,20 +156,34 @@ Needs the same auth as the rest of the app (Cloudera AI Workbench Session/Applic
 identical model weights, so latency/throughput/quality differences are attributable to the
 serving stack, not the model:
 
-| Platform | Model config | Auth |
+| Platform | Model config | Auth / setup |
 |---|---|---|
 | Cloudera AI Inference | `src.config.QWEN_TRIAGE` | Workload JWT (automatic, same as the rest of the app) |
-| Fireworks AI | `src.config.QWEN_FIREWORKS` | `FIREWORKS_API_KEY` env var (get one at [fireworks.ai](https://fireworks.ai)) |
+| Fireworks AI | `src.config.QWEN_FIREWORKS` | `FIREWORKS_API_KEY` + `FIREWORKS_MODEL_ID` env vars — see below |
 
-Databricks isn't included — `Qwen2.5-7B-Instruct` isn't on their pay-per-token Foundation Model
-API list (only newer Qwen3-series models are, as of when this was checked). Adding it would
-mean self-deploying the model on a Databricks Provisioned Throughput endpoint first, a bigger
-step than an API key — the config in `src/config.py` (`ModelConfig`, `BENCHMARK_MODELS`,
-`get_api_key()`, `is_configured()`) is written so adding a third provider later, Databricks or
-otherwise, is just one more `ModelConfig` entry plus an env var.
+**Fireworks needs an on-demand deployment, not just an API key.** `Qwen2.5-7B-Instruct` isn't
+available serverless on Fireworks (confirmed on their model page: "Serverless: Not supported")
+— it has to be deployed to a dedicated GPU first (an H100 80GB, billed hourly while it's
+running — tear it down after benchmarking). Once deployed, Fireworks' console shows the exact
+model string to use, shaped like `accounts/<your-account>/deployments/<deployment-id>` — set
+that as `FIREWORKS_MODEL_ID` (the base URL stays `https://api.fireworks.ai/inference/v1`
+either way). That model ID is deployment-specific and meant to be temporary, so it's read from
+an env var rather than hardcoded in `src/config.py`, unlike everything else in this project.
 
-The page skips (and clearly marks) any provider whose API key isn't set, rather than failing —
-export `FIREWORKS_API_KEY` and reload to add that leg of the comparison once you have a key.
+Since Cloudera's own Qwen endpoint is also dedicated capacity (1× A10G, not shared), this ends
+up a fair dedicated-vs-dedicated comparison — but worth saying explicitly: an H100 is
+meaningfully more powerful than an A10G, so a Fireworks win on latency is partly "bigger GPU,"
+not purely "better serving stack."
+
+Databricks isn't included at all — `Qwen2.5-7B-Instruct` isn't on their pay-per-token
+Foundation Model API list either (only newer Qwen3-series models are, as of when this was
+checked), and that path needs a self-deployed Provisioned Throughput endpoint. The config in
+`src/config.py` (`ModelConfig`, `BENCHMARK_MODELS`, `get_api_key()`, `is_configured()`) is
+written so adding a third provider later, Databricks or otherwise, is just one more
+`ModelConfig` entry plus the relevant env var(s).
+
+The page skips (and clearly marks, naming exactly which env var is missing) any provider
+that isn't fully configured, rather than failing when you click run.
 
 ## Disclaimer
 

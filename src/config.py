@@ -22,6 +22,7 @@ class ModelConfig:
     model_id: str                  # value sent in the "model" field of each request
     provider: str = "cloudera"     # "cloudera" (JWT auth) | "api_key" (static key via env var)
     api_key_env: str | None = None  # env var holding the key, when provider == "api_key"
+    model_id_env: str | None = None  # env var that supplied model_id, if it wasn't hardcoded (for UI messaging)
 
 
 # --- Cloudera AI Inference Service endpoints -------------------------------
@@ -64,14 +65,24 @@ MODELS = {
 # for pages/5_Benchmark.py -- same weights, different serving stack, so any
 # latency/throughput/quality difference is about the platform, not the model.
 # Fireworks uses a plain API key (no Cloudera workload JWT), set via env var.
+#
+# Qwen2.5-7B-Instruct isn't available serverless on Fireworks (confirmed:
+# their own model page says "Serverless: Not supported") -- it needs an
+# on-demand dedicated-GPU deployment instead. That means the model_id is an
+# *account- and deployment-specific* string (accounts/<you>/deployments/<id>),
+# not a fixed public model path, and the deployment itself is meant to be
+# torn down after benchmarking (it bills hourly) -- so unlike everything else
+# in this file, it's read from an env var rather than hardcoded, to avoid
+# committing a dead reference to a deployment that no longer exists.
 QWEN_FIREWORKS = ModelConfig(
     key="qwen2.5-7b-instruct-fireworks",
-    label="Qwen2.5-7B-Instruct (Fireworks AI)",
-    role="Benchmark comparison",
+    label="Qwen2.5-7B-Instruct (Fireworks AI, on-demand)",
+    role="Benchmark comparison — dedicated on-demand GPU deployment, not shared serverless",
     base_url="https://api.fireworks.ai/inference/v1",
-    model_id="accounts/fireworks/models/qwen2p5-7b-instruct",
+    model_id=os.environ.get("FIREWORKS_MODEL_ID", ""),
     provider="api_key",
     api_key_env="FIREWORKS_API_KEY",
+    model_id_env="FIREWORKS_MODEL_ID",
 )
 
 BENCHMARK_MODELS = {
@@ -196,13 +207,17 @@ def get_api_key(model_cfg: ModelConfig) -> str:
 
 
 def is_configured(model_cfg: ModelConfig) -> bool:
-    """Cheap, side-effect-light check for whether a model's auth is likely
-    available -- used by the UI to gray out / explain unconfigured
-    providers instead of only failing when someone clicks "run"."""
+    """Cheap, side-effect-light check for whether a model is actually
+    callable -- used by the UI to gray out / explain unconfigured
+    providers instead of only failing when someone clicks "run". Requires
+    both a usable API key AND a non-empty model_id, since some models
+    (see QWEN_FIREWORKS) source model_id from an env var with no working
+    default -- a missing model_id fails just as hard as a missing key."""
     if model_cfg.provider == "cloudera":
-        return True  # only knowable for certain by actually reading /tmp/jwt; assume yes
+        return bool(model_cfg.model_id)  # key is only knowable for certain by reading /tmp/jwt; assume yes
     if model_cfg.provider == "api_key":
-        return bool(model_cfg.api_key_env and os.environ.get(model_cfg.api_key_env))
+        has_key = bool(model_cfg.api_key_env and os.environ.get(model_cfg.api_key_env))
+        return has_key and bool(model_cfg.model_id)
     return False
 
 

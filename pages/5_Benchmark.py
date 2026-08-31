@@ -7,6 +7,7 @@ Latency/throughput uses src/benchmark.py; quality reuses src/evals.py's
 ground-truth scoring, generalized to accept any provider's ModelConfig.
 """
 
+import os
 import time
 
 import pandas as pd
@@ -29,9 +30,15 @@ header(
 st.markdown(
     "Both providers here run the identical model weights, so a difference in latency, "
     "throughput, or triage quality is telling you something about the *serving stack*, not "
-    "about which model is smarter. Databricks isn't included: Qwen2.5-7B-Instruct isn't on "
-    "their pay-per-token Foundation Model API list — adding it would need a self-deployed "
-    "Provisioned Throughput endpoint, which is a bigger step than an API key."
+    "about which model is smarter — with one asterisk: Qwen2.5-7B-Instruct isn't available "
+    "serverless on Fireworks, so that leg runs on a dedicated on-demand GPU deployment "
+    "(an H100) rather than shared capacity. Cloudera's endpoint is also dedicated (a single "
+    "A10G), so this is a fair dedicated-vs-dedicated comparison — but an H100 is meaningfully "
+    "more powerful hardware than an A10G, so a Fireworks win on latency is partly \"bigger "
+    "GPU,\" not purely \"better serving stack.\" Worth saying out loud wherever these results "
+    "get shown. Databricks isn't included at all: Qwen2.5-7B-Instruct isn't on their "
+    "pay-per-token Foundation Model API list either, and that path needs a self-deployed "
+    "Provisioned Throughput endpoint."
 )
 
 st.subheader("Providers")
@@ -45,7 +52,8 @@ for col, model_cfg in zip(cols, BENCHMARK_MODELS.values()):
         if ok:
             st.success("Configured")
         else:
-            st.warning(f"Not configured — export `{model_cfg.api_key_env}` to enable")
+            missing = [v for v in (model_cfg.api_key_env, model_cfg.model_id_env) if v and not os.environ.get(v)]
+            st.warning(f"Not configured — export {', '.join(f'`{m}`' for m in missing)} to enable")
 
 available_models = [m for m in BENCHMARK_MODELS.values() if configured[m.key]]
 

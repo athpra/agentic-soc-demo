@@ -11,9 +11,11 @@ pipeline calling model endpoints served by Cloudera AI Inference Service:
 See pages/ for the interactive demo and the raw traffic generator.
 """
 
+import json
+
 import streamlit as st
 
-from src.config import MODELS
+from src.config import JWT_FILE, MODELS
 from src.llm_client import chat
 from src.ui_theme import header, inject_theme
 
@@ -122,3 +124,45 @@ with st.expander("Endpoint configuration"):
     for model_cfg in MODELS.values():
         st.markdown(f"**{model_cfg.label}** — _{model_cfg.role}_")
         st.code(f"base_url = {model_cfg.base_url}\nmodel_id = {model_cfg.model_id}", language="text")
+
+with st.expander("🔧 Debug: inspect /tmp/jwt as this Application sees it (no secret values shown)"):
+    st.caption(
+        "Checking `/tmp/jwt` from a Session terminal shows a *different* file than what this "
+        "Application actually reads — Sessions and Applications run in separate containers. "
+        "This reads it from inside the Application itself, right now."
+    )
+    st.code(f"JWT_FILE path in use: {JWT_FILE}", language="text")
+    try:
+        with open(JWT_FILE, encoding="utf-8-sig") as f:
+            raw = f.read()
+        st.write(f"File exists: yes — {len(raw)} bytes read")
+        stripped = raw.strip()
+        if not stripped:
+            st.error("File is empty (or whitespace only).")
+        else:
+            # Structural hints only -- never print raw file content, even on
+            # a parse failure, since truncated/mid-write JSON can still
+            # contain a real partial token value.
+            st.caption(
+                f"Starts with '{{' or '[' (JSON-shaped): {stripped[:1] in '{['} · "
+                f"Starts with '<' (HTML/error-page-shaped): {stripped[:1] == '<'}"
+            )
+            try:
+                data = json.loads(raw)
+                if isinstance(data, dict):
+                    shape = {
+                        k: (f"str[{len(v)}]" if isinstance(v, str) else type(v).__name__)
+                        for k, v in data.items()
+                    }
+                    st.write("Parses as JSON. Keys present (values hidden):")
+                    st.json(shape)
+                    if "access_token" not in data:
+                        st.error("No 'access_token' key in this JSON.")
+                else:
+                    st.error(f"Parses as JSON, but top-level type is {type(data).__name__}, not an object.")
+            except json.JSONDecodeError as exc:
+                st.error(f"Not valid JSON: {exc}")
+    except FileNotFoundError:
+        st.error(f"No file exists at {JWT_FILE} from this Application's perspective.")
+    except OSError as exc:
+        st.error(f"OS error reading {JWT_FILE}: {exc}")

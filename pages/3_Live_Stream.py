@@ -283,7 +283,11 @@ if run:
 
     warmup = int(avg_triage_latency)
     steady_buckets = [b for b in per_sec if warmup <= b < duration_s]
-    steady_eps = sum(per_sec[b] for b in steady_buckets) / len(steady_buckets) if steady_buckets else 0.0
+    # steady_eps = sum(per_sec[b] for b in steady_buckets) / len(steady_buckets) if steady_buckets else 0.0
+
+    steady_window = max(0, duration_s - warmup)
+    steady_eps = sum(per_sec.get(b, 0) for b in range(warmup, duration_s)) / steady_window if steady_window else 0.0
+
 
     if steady_eps >= target_eps:
         hit_label = "Yes"

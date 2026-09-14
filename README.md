@@ -1,5 +1,38 @@
 # Agentic SOC Reference Demo
 
+[![Reproducible](https://img.shields.io/badge/Reproducible-Yes-success.svg)](#)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Repo size](https://img.shields.io/github/repo-size/athpra/agentic-soc-demo.svg)](#)
+
+[![Stars](https://img.shields.io/github/stars/athpra/agentic-soc-demo.svg?style=social&label=Star)](https://github.com/athpra/agentic-soc-demo)
+
+<p align="center">
+        <img src="images/icon.png" width="400" alt="Agentic SOC Logo" />
+</p>
+
+
+<p align="center">
+        <img src="images/flow1.png" width="400" alt="Flow 1" />
+</p>
+
+<p align="center">
+        <img src="images/flow2.png" width="400" alt="Flow 2" />
+</p>
+
+<p align="center">
+        <img src="images/flow3.png" width="400" alt="Flow 3" />
+</p>
+
+<p align="center">
+        <img src="images/flow4.png" width="400" alt="Flow 4" />
+</p>
+
+<p align="center">
+        <img src="images/flow5.png" width="400" alt="Flow 5" />
+</p>
+
+
+
 A small reference project showing how a **Cloudera AI Workbench** project calls model
 endpoints served by **Cloudera AI Inference Service**, using a security-telemetry
 analysis scenario as the worked example.

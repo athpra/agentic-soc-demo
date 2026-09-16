@@ -5,6 +5,8 @@
 [![Repo size](https://img.shields.io/github/repo-size/athpra/agentic-soc-demo.svg)](#)
 [![Stars](https://img.shields.io/github/stars/athpra/agentic-soc-demo.svg?style=social&label=Star)](https://github.com/athpra/agentic-soc-demo)
 
+Maintained by [@athpra](https://github.com/athpra).
+
 <!-- <p align="center">
         <img src="assets/icon.png" width="400" alt="Agentic SOC Logo" />
 </p> -->

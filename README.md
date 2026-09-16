@@ -160,33 +160,27 @@ python scripts/generate_sample_data.py
 
 ## Architecture / Software Components
 
-```
- Synthetic SOC telemetry (data/sample_logs.db)
-                │
-                ▼
-     ┌─────────────────────┐
-     │   Stage 1 · Triage   │   Qwen2.5-7B-Instruct
-     │  (Cloudera AI        │   fast, cheap risk-scoring
-     │   Inference Service) │   of every raw event
-     └──────────┬───────────┘
-                │ escalate high-risk only
-                ▼
-     ┌─────────────────────┐
-     │ Stage 2 · Investigate│   Nemotron-3-Super-120B
-     │  (Cloudera AI        │   deep, correlated
-     │   Inference Service) │   investigation report
-     └──────────┬───────────┘
-                ▼
-     Streamlit app (Cloudera AI Workbench Application)
-     Triage & Investigate · Traffic Generator · Live Stream
-     Evals · Benchmark
-```
+<p>
+        <img src="assets/architecture.png" width="900" alt="End-to-end system architecture" />
+</p>
 
-Both stages call the same Cloudera AI Inference Service through an OpenAI-compatible
-`/v1/chat/completions` API (see `src/llm_client.py`), authenticated with the workload JWT
-Cloudera AI Workbench mounts automatically (see [docs/auth.md](docs/auth.md)) — the
-app itself makes no local model calls and needs no GPU of its own. *A rendered diagram
-image will replace the ASCII sketch above once one is added to `assets/`.*
+The diagram shows the full Cloudera Data Platform pattern this demo's scenario is drawn
+from: log sources streamed in (Cloudera DataFlow/NiFi, Cloudera Streaming/Kafka) into an
+Iceberg lakehouse, queried in place, with results written back to a new Iceberg table —
+all under one SDX governance layer (Ranger access policy, Atlas lineage/catalog) spanning
+both data and AI.
+
+**This repo implements the right-hand "AI Services" slice of that diagram**: the
+Cloudera AI Workbench Application (this Streamlit app) calling two Cloudera AI Inference
+Service endpoints — `Qwen2.5-7B-Instruct` for triage, `Nemotron-3-Super-120B` for
+investigation — over the same OpenAI-compatible `/v1/chat/completions` API and workload
+JWT auth shown in the diagram (see `src/llm_client.py` and
+[docs/auth.md](docs/auth.md)). The left-hand "Data Services" half (streaming ingest into
+a governed Iceberg lakehouse) is illustrative of where this data would come from in a
+full deployment; this demo stands that in with a bundled, regenerable
+`data/sample_logs.db` (see **Regenerating sample data** above) read directly by the app,
+rather than a live NiFi/Kafka pipeline or a real Iceberg table. The app itself makes no
+local model calls and needs no GPU of its own.
 
 ## Target Audience
 

@@ -8,5 +8,5 @@ Diagrams and screenshots referenced from the main [README](../README.md), per th
   README's Demo section.
 - `icon.png` — project logo, currently unused (referenced from a commented-out block at
   the top of the README).
-- `architecture.png` — pipeline/architecture diagram, referenced from the README's
-  Architecture section. *Not yet added — pending a diagram export.*
+- `architecture.png` — end-to-end system architecture diagram, referenced from the
+  README's Architecture section.

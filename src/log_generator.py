@@ -19,6 +19,7 @@ only so the UI can display ground truth / scoring for the demo:
 import json
 import os
 import random
+import sqlite3
 from datetime import datetime, timedelta, timezone
 
 SEED = 42
@@ -252,16 +253,62 @@ def stream_batches(batch_size: int = 8, seed: int = SEED):
         yield batch
 
 
-def write_dataset(out_dir: str, seed: int = SEED) -> None:
-    os.makedirs(out_dir, exist_ok=True)
-    for name, events in generate_dataset(seed).items():
-        path = os.path.join(out_dir, f"{name}.jsonl")
-        with open(path, "w") as f:
-            for event in events:
-                f.write(json.dumps(event) + "\n")
+def write_dataset(db_path: str, seed: int = SEED) -> None:
+    """Write the synthetic dataset to a SQLite database at `db_path`.
+
+    One `events` table across all four log sources rather than one table
+    per source: the four generators don't share a column schema (firewall
+    events have dst_port/protocol, EDR alerts have process/command_line,
+    etc.) and that field set changes whenever a scenario is tweaked, so
+    hand-maintaining four schemas would drift out of sync with the
+    generators. The fields every page actually filters/sorts on (id,
+    source, timestamp, scenario, event_type) are real indexed columns;
+    the rest of each event lives in `payload` as JSON, one `json_extract()`
+    away for anyone who wants to query into it.
+    """
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    if os.path.exists(db_path):
+        os.remove(db_path)
+
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute(
+            """
+            CREATE TABLE events (
+                id TEXT PRIMARY KEY,
+                source TEXT NOT NULL,
+                event_type TEXT,
+                timestamp TEXT NOT NULL,
+                scenario TEXT,
+                payload TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute("CREATE INDEX idx_events_source ON events(source)")
+        conn.execute("CREATE INDEX idx_events_timestamp ON events(timestamp)")
+
+        for source, events in generate_dataset(seed).items():
+            conn.executemany(
+                "INSERT INTO events (id, source, event_type, timestamp, scenario, payload) "
+                "VALUES (:id, :source, :event_type, :timestamp, :scenario, :payload)",
+                [
+                    {
+                        "id": event["id"],
+                        "source": source,
+                        "event_type": event.get("event_type"),
+                        "timestamp": event["timestamp"],
+                        "scenario": event.get("scenario"),
+                        "payload": json.dumps(event),
+                    }
+                    for event in events
+                ],
+            )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":
-    target = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "sample_logs")
+    target = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "sample_logs.db")
     write_dataset(target)
     print(f"Wrote synthetic sample logs to {target}")

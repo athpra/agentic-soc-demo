@@ -1,0 +1,51 @@
+# Cloudera Blueprint catalog metadata
+# Populate fields used by the master blueprint website and internal catalog.
+
+# --- Identity ---
+name: "Agentic SOC Reference Demo"
+slug: "agentic-soc-demo"
+description: "Two-stage security-telemetry triage and investigation pipeline calling Cloudera AI Inference Service endpoints."
+reprise_link: ""
+
+# --- Classification (website filters) ---
+catalog_classification:
+  - Developer Example                        # Options: Enterprise Blueprint | Research | Launchable (AMP) | Developer Example
+launchable: false                            # true | false
+lifecycle_status: Active                     # e.g., Active | Deprecated
+
+# --- Industry & alignment ---
+industry: General                            # e.g., General | Telecom | Financial Services | Healthcare & Life Sciences | Retail | Media | Physical AI & Robotics
+industry_alignment: "Horizontal"
+target_vertical: "Security Operations"
+
+# --- Tags (website search & browse) ---
+tags:
+  - agentic-soc
+  - security-operations
+  - triage
+  - siem
+  - cloudera-ai-inference
+
+# --- Relationships ---
+product_mapping:                             # Cloudera products used
+  - Cloudera AI Inference Service
+  - Cloudera AI Workbench
+# model_dependencies:                          # Models, embeddings, or external AI services, if any. Comment out if none.
+#   - Qwen2.5-7B-Instruct
+#   - nemotron-3-super-120b-a12b
+
+# --- Provenance ---
+publisher: cloudera                          # cloudera | partner-name
+source: Internal                             # Internal | Partner | NVIDIA Adaptation | Customer
+
+# --- Repository & assets ---
+public_github_link: "https://github.com/athpra/agentic-soc-demo"
+#private_github_link: ""                      # If applicable, original repo during development
+
+# --- Ownership ---
+maintainer_name: "Athul Prasad"
+
+# --- Dates ---
+date_created: "2026-08-24"
+date_updated: "2026-09-16"
+published_date: "2026-09-16"                 # Published date / last modified

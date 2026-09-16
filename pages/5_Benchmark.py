@@ -16,7 +16,7 @@ import streamlit as st
 from src.benchmark import run_latency_benchmark, summarize_latencies
 from src.config import BENCHMARK_MODELS, is_configured
 from src.evals import METRIC_LABELS, THRESHOLDS, run_eval, verdict
-from src.ui_theme import header, inject_theme
+from frontend.theme import header, inject_theme
 
 st.set_page_config(page_title="Benchmark — Agentic SOC Demo", page_icon="⚡", layout="wide")
 inject_theme()
@@ -32,15 +32,12 @@ st.markdown(
     "throughput, or triage quality is telling you something about the *serving stack*, not "
     "about which model is smarter — with one asterisk: Qwen2.5-7B-Instruct isn't available "
     "serverless on Fireworks, so that leg runs on a dedicated on-demand GPU deployment "
-    "(an H100) rather than shared capacity. **The GPU backing this project's Cloudera AI "
-    "Inference endpoint hasn't been confirmed** — an earlier version of this page assumed "
-    "A10G, carried over from a different Cloudera demo environment, which was never actually "
-    "verified for *this* one. If Cloudera's side turns out to be on lighter hardware than the "
-    "on-demand H100, a Fireworks latency win is partly \"bigger GPU,\" not purely \"better "
-    "serving stack\" — check your endpoint's resource profile in Cloudera AI Registry / Model "
-    "Serving to know for sure before reading too much into a gap either way. Databricks isn't "
-    "included at all: Qwen2.5-7B-Instruct isn't on their pay-per-token Foundation Model API "
-    "list either, and that path needs a self-deployed Provisioned Throughput endpoint."
+    "(an H100) rather than shared capacity. **This project's Cloudera AI Inference endpoint "
+    "runs on a confirmed 1× A10G** — since Fireworks' on-demand deployment needs a larger, "
+    "compute-oriented H100, any Fireworks latency win is partly \"bigger GPU,\" not purely "
+    "\"better serving stack.\" Databricks isn't included at all: Qwen2.5-7B-Instruct isn't on "
+    "their pay-per-token Foundation Model API list either, and that path needs a "
+    "self-deployed Provisioned Throughput endpoint."
 )
 
 st.subheader("Providers")

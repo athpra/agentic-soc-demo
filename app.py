@@ -17,7 +17,7 @@ import streamlit as st
 
 from src.config import JWT_FILE, MODELS
 from src.llm_client import chat
-from src.ui_theme import header, inject_theme
+from frontend.theme import header, inject_theme
 
 st.set_page_config(page_title="Agentic SOC Reference Demo", page_icon="🛡️", layout="wide")
 inject_theme()

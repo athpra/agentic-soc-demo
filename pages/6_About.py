@@ -3,7 +3,7 @@ what this project is / is not."""
 
 import streamlit as st
 
-from src.ui_theme import header, inject_theme
+from frontend.theme import header, inject_theme
 
 st.set_page_config(page_title="About — Agentic SOC Demo", page_icon="ℹ️", layout="wide")
 inject_theme()

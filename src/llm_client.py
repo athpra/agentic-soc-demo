@@ -42,6 +42,12 @@ def chat(
     model_cfg: ModelConfig,
     messages: list[dict],
     *,
+    # This default is just a safe fallback -- every real call site in this
+    # repo sets temperature explicitly: 0.0 for triage classification
+    # (src/analysis.py's _score_batch, which needs the same event to get the
+    # same label run-to-run for src/evals.py's scorecard to be comparable),
+    # 0.2 for investigation reports (evidence-grounded consistency matters
+    # more than varied prose for an incident report).
     temperature: float = 0.2,
     max_tokens: int = 1024,
     timeout: float = 60.0,

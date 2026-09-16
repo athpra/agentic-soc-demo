@@ -116,6 +116,9 @@ def _score_batch(batch: list[dict], model_cfg: ModelConfig) -> tuple[list[dict],
         {"role": "system", "content": TRIAGE_SYSTEM_PROMPT},
         {"role": "user", "content": json.dumps(payload)},
     ]
+    # temperature=0.0: this is classification, not creative generation -- the
+    # same event should get the same risk label every time, which is also
+    # what makes src/evals.py's scorecard comparable across runs.
     res: ChatResult = chat(model_cfg, messages, temperature=0.0, max_tokens=1200)
     return batch, res
 
@@ -236,6 +239,11 @@ def _call_investigation(events: list[dict], model_cfg: ModelConfig) -> ChatResul
     # endpoint (Live Stream running triage + investigation concurrently),
     # and the default was killing legitimately-slow-but-successful calls
     # and counting them as failures.
+    # temperature=0.2: low but nonzero. An incident report is judged on
+    # being evidence-grounded and reproducible, not varied -- a report that
+    # changes materially each time you regenerate it from the same escalated
+    # events would undermine analyst trust, so this stays far from a
+    # "creative generation" temperature.
     res = chat(model_cfg, messages, temperature=0.2, max_tokens=3500, timeout=240.0)
     if not res.error:
         res.text, res.reasoning = strip_reasoning_preamble(res.text)

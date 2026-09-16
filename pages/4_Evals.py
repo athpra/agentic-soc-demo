@@ -15,7 +15,7 @@ import streamlit as st
 
 from src.config import QWEN_TRIAGE
 from src.evals import METRIC_LABELS, THRESHOLDS, run_eval, verdict
-from src.ui_theme import header, inject_theme
+from frontend.theme import header, inject_theme
 
 st.set_page_config(page_title="Evals — Agentic SOC Demo", page_icon="🧪", layout="wide")
 inject_theme()

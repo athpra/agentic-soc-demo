@@ -28,7 +28,7 @@ from src.analysis import (
 )
 from src.config import NEMOTRON_INVESTIGATE, QWEN_TRIAGE
 from src.log_generator import get_demo_escalation, stream_batches
-from src.ui_theme import header, inject_theme, risk_badge
+from frontend.theme import header, inject_theme, risk_badge
 
 st.set_page_config(page_title="Live Stream — Agentic SOC Demo", page_icon="📡", layout="wide")
 inject_theme()
@@ -71,13 +71,8 @@ FRONTIER_PRICING = {
 }
 
 # Self-hosted Cloudera AI Inference: fixed annual cost regardless of volume.
-# Reused from a sibling PoC's real deployment of these same two models on
-# that PoC's own environment (there, confirmed as 1x A10G Qwen + 4x A10G
-# Nemotron) -- matches the ROI artifact exactly, but the GPU backing THIS
-# project's own endpoints has never actually been confirmed. Treat this
-# figure as a placeholder basis, not a verified cost, until that's checked
-# (Cloudera AI Registry / Model Serving shows each endpoint's resource
-# profile).
+# Confirmed for this project's actual endpoints: 1x A10G (Qwen triage) +
+# 4x A10G (Nemotron investigation) -- matches the ROI artifact exactly.
 CLOUDERA_FIXED_ANNUAL = 26_000 + 86_000
 
 st.subheader("Configuration")
@@ -369,12 +364,9 @@ if run:
         f"actually sustained ({events_per_year:,.0f} events/yr, {investigations_per_year:,.0f} "
         "investigations/yr) out to a full year, and compares it against Cloudera's fixed cost."
     )
-    st.warning(
-        f"⚠️ The ${CLOUDERA_FIXED_ANNUAL:,.0f}/yr Cloudera figure below assumes 1× A10G "
-        "(triage) + 4× A10G (investigate) — reused from a *different* Cloudera demo "
-        "environment's real deployment, never confirmed for this project's actual endpoints. "
-        "Check your endpoint's resource profile in Cloudera AI Registry / Model Serving before "
-        "treating this comparison as final."
+    st.caption(
+        f"The ${CLOUDERA_FIXED_ANNUAL:,.0f}/yr Cloudera figure below assumes 1× A10G "
+        "(triage) + 4× A10G (investigate) — confirmed for this project's actual endpoints."
     )
 
     annual_rows = [{"Option": "Cloudera AI Inference (fixed)", "Annual cost": f"${CLOUDERA_FIXED_ANNUAL:,.0f}", "vs. Cloudera": "—"}]

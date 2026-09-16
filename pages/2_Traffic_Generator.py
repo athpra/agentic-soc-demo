@@ -4,17 +4,17 @@ utilization show up on the endpoint / workspace side while exercising the
 same client code as the analysis demo."""
 
 import json
-import os
 import random
+import sqlite3
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 import streamlit as st
 
-from src.config import LOG_SOURCES, MODELS, SAMPLE_LOG_DIR
+from src.config import MODELS, SAMPLE_LOG_DB
 from src.llm_client import chat
-from src.ui_theme import header, inject_theme
+from frontend.theme import header, inject_theme
 
 st.set_page_config(page_title="Traffic Generator — Agentic SOC Demo", page_icon="📈", layout="wide")
 inject_theme()
@@ -34,15 +34,12 @@ st.markdown(
 
 @st.cache_data(show_spinner=False)
 def load_sample_events() -> list[dict]:
-    events = []
-    for meta in LOG_SOURCES.values():
-        path = os.path.join(SAMPLE_LOG_DIR, meta["file"])
-        with open(path) as f:
-            for line in f:
-                line = line.strip()
-                if line:
-                    events.append(json.loads(line))
-    return events
+    conn = sqlite3.connect(SAMPLE_LOG_DB)
+    try:
+        rows = conn.execute("SELECT payload FROM events").fetchall()
+    finally:
+        conn.close()
+    return [json.loads(payload) for (payload,) in rows]
 
 
 SAMPLE_EVENTS = load_sample_events()

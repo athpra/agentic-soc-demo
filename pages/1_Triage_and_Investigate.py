@@ -3,14 +3,14 @@ then escalate the high-risk findings to Nemotron-3-Super-120B for a
 correlated investigation report."""
 
 import json
-import os
+import sqlite3
 
 import pandas as pd
 import streamlit as st
 
 from src.analysis import WorkMetrics, investigate_events, triage_events
-from src.config import LOG_SOURCES, MODELS, NEMOTRON_INVESTIGATE, QWEN_TRIAGE, SAMPLE_LOG_DIR
-from src.ui_theme import header, inject_theme, risk_badge
+from src.config import LOG_SOURCES, MODELS, NEMOTRON_INVESTIGATE, QWEN_TRIAGE, SAMPLE_LOG_DB
+from frontend.theme import header, inject_theme, risk_badge
 
 st.set_page_config(page_title="Triage & Investigate — Agentic SOC Demo", page_icon="🔍", layout="wide")
 inject_theme()
@@ -35,17 +35,20 @@ for key, default in {
 @st.cache_data(show_spinner=False)
 def load_sample_events() -> list[dict]:
     events = []
-    for source_key, meta in LOG_SOURCES.items():
-        path = os.path.join(SAMPLE_LOG_DIR, meta["file"])
-        with open(path) as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                event = json.loads(line)
-                event["_source"] = source_key
-                events.append(event)
-    return sorted(events, key=lambda e: e["timestamp"])
+    conn = sqlite3.connect(SAMPLE_LOG_DB)
+    try:
+        placeholders = ",".join("?" for _ in LOG_SOURCES)
+        rows = conn.execute(
+            f"SELECT source, payload FROM events WHERE source IN ({placeholders}) ORDER BY timestamp",
+            list(LOG_SOURCES.keys()),
+        ).fetchall()
+    finally:
+        conn.close()
+    for source_key, payload in rows:
+        event = json.loads(payload)
+        event["_source"] = source_key
+        events.append(event)
+    return events
 
 
 # --- data selection ------------------------------------------------------

@@ -1,8 +1,8 @@
 # Agentic SOC Reference Demo
 
-[![Reproducible](https://img.shields.io/badge/Reproducible-Yes-success.svg)](#)
+[![Reproducible](https://img.shields.io/badge/Reproducible-Yes-success.svg)](docs/evals.md)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Repo size](https://img.shields.io/github/repo-size/athpra/agentic-soc-demo.svg)](#)
+[![Repo size](https://img.shields.io/github/repo-size/athpra/agentic-soc-demo.svg)](https://github.com/athpra/agentic-soc-demo)
 [![Stars](https://img.shields.io/github/stars/athpra/agentic-soc-demo.svg?style=social&label=Star)](https://github.com/athpra/agentic-soc-demo)
 
 Maintained by [@athpra](https://github.com/athpra).
